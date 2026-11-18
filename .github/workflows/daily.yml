@@ -1,0 +1,26 @@
+name: Kelime Masters 16:00
+on:
+  schedule:
+    - cron: "1 13 * * 1-5"   # 16:01 İstanbul, hafta içi
+  workflow_dispatch:
+    inputs:
+      day: { description: "Gün (YYYY-MM-DD, boş = bugün)", required: false }
+      force: { description: "Aynı gün tekrar paylaş (1)", required: false }
+permissions:
+  contents: write
+concurrency: { group: daily, cancel-in-progress: false }
+jobs:
+  share:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow==11.* && sudo apt-get install -y fonts-dejavu-core >/dev/null
+      - run: python scripts/daily.py
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          RAW_CHANNEL: C0CJJHLE3PW
+          DAY: ${{ inputs.day }}
+          FORCE: ${{ inputs.force }}
