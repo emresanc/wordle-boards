@@ -1,7 +1,8 @@
 name: Kelime Masters 16:00
 on:
   schedule:
-    - cron: "1 13 * * 1-5"   # 16:01 İstanbul, hafta içi
+    - cron: "1 13 * * 1-5"        # 16:01 İstanbul, hafta içi: kesin paylaşım
+    - cron: "*/10 6-12 * * 1-5"   # 09:00-15:50: herkes bitirdiyse erken paylaşım
   workflow_dispatch:
     inputs:
       day: { description: "Gün (YYYY-MM-DD, boş = bugün)", required: false }
@@ -24,3 +25,4 @@ jobs:
           RAW_CHANNEL: C0CJJHLE3PW
           DAY: ${{ inputs.day }}
           FORCE: ${{ inputs.force }}
+          EARLY: ${{ github.event.schedule == '*/10 6-12 * * 1-5' && '1' || '' }}

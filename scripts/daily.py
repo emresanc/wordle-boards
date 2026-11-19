@@ -9,6 +9,8 @@ TZ = ZoneInfo("Europe/Istanbul")
 now = datetime.datetime.now(TZ)
 day = os.environ.get("DAY") or now.date().isoformat()
 force = os.environ.get("FORCE") == "1"
+early = os.environ.get("EARLY") == "1"   # 16:00'dan önceki kontroller: yalnız herkes oynadıysa paylaş
+ROSTER_DAYS = 7
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 png = os.path.join(root, "boards", f"{day}.png")
 if os.path.exists(png) and not force:
@@ -21,7 +23,8 @@ def slack(method, **params):
     if not d.get("ok"): raise SystemExit(f"Slack {method} hatası: {d.get('error')}")
     return d
 
-oldest = datetime.datetime.fromisoformat(day).replace(tzinfo=TZ).timestamp()
+day_start = datetime.datetime.fromisoformat(day).replace(tzinfo=TZ)
+oldest = (day_start - datetime.timedelta(days=ROSTER_DAYS)).timestamp() if early else day_start.timestamp()
 texts, cursor = [], None
 while True:
     p = {"channel": os.environ["RAW_CHANNEL"], "oldest": str(oldest), "limit": "200"}
@@ -30,6 +33,22 @@ while True:
     texts += [m.get("text", "") for m in d.get("messages", [])]
     cursor = (d.get("response_metadata") or {}).get("next_cursor")
     if not cursor: break
+if early:
+    sys.path.insert(0, os.path.join(root, "scripts"))
+    import re, wm16
+    names_by_day = {}
+    for tok in re.findall(r"WM1 ([A-Za-z0-9+/=]+)", "\n".join(texts)):
+        try: r = wm16.decode(tok)
+        except Exception: continue
+        n = r.get("n", "").strip()
+        if n and n != "İsimsiz": names_by_day.setdefault(r.get("d"), set()).add(n.lower())
+    today_names = names_by_day.get(day, set())
+    roster = set().union(*[v for d, v in names_by_day.items() if d != day] or [set()]) | today_names
+    missing = roster - today_names
+    print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
+    if len(roster) < 2 or missing:
+        print("Herkes bitirmedi, 16:00 bekleniyor."); sys.exit(0)
+    print("Herkes bitirdi, erken paylaşılıyor.")
 raw = os.path.join(root, "raw.tmp"); open(raw, "w", encoding="utf-8").write("\n".join(texts))
 os.makedirs(os.path.dirname(png), exist_ok=True)
 out = subprocess.run([sys.executable, os.path.join(root, "scripts", "wm16.py"), raw, day, png], capture_output=True, text=True, check=True)
@@ -49,7 +68,8 @@ for _ in range(12):
     time.sleep(5)
 
 medals = ["🥇", "🥈", "🥉"]
-text = f"🟩 *Günün sonuçları* · Cevap: {s['answer']} · {s['count']} oyuncu\n" + "\n".join(f"{medals[i]} {r}" for i, r in enumerate(s["ranking"][:3]))
+head = "🟩 *Herkes bitirdi!* " if early else "🟩 "
+text = head + f"*Günün sonuçları* · Cevap: {s['answer']} · {s['count']} oyuncu\n" + "\n".join(f"{medals[i]} {r}" for i, r in enumerate(s["ranking"][:3]))
 body = {"text": text.replace("*", ""), "blocks": [
     {"type": "section", "text": {"type": "mrkdwn", "text": text}},
     {"type": "image", "image_url": img, "alt_text": "Günün Wordle tahtaları"}]}
