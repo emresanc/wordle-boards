@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wm16
 from PIL import Image, ImageDraw
 
-START = "2026-11-17"
+START = "2026-11-18"
 
 def stats(text, today):
     byday = defaultdict(dict)

@@ -16,7 +16,7 @@ def slack(method, **params):
     if not d.get("ok"): raise SystemExit(f"Slack {method} hatası: {d.get('error')}")
     return d
 
-oldest = datetime.datetime(2026, 11, 17, tzinfo=TZ).timestamp()
+oldest = datetime.datetime(2026, 11, 18, tzinfo=TZ).timestamp()
 texts, cursor = [], None
 while True:
     p = {"channel": os.environ["RAW_CHANNEL"], "oldest": str(oldest), "limit": "200"}
