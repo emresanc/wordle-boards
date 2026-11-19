@@ -24,7 +24,7 @@ def slack(method, **params):
     return d
 
 day_start = datetime.datetime.fromisoformat(day).replace(tzinfo=TZ)
-oldest = (day_start - datetime.timedelta(days=ROSTER_DAYS)).timestamp() if early else day_start.timestamp()
+oldest = min(day_start - datetime.timedelta(days=ROSTER_DAYS), datetime.datetime(2026, 11, 18, tzinfo=TZ)).timestamp()
 texts, cursor = [], None
 while True:
     p = {"channel": os.environ["RAW_CHANNEL"], "oldest": str(oldest), "limit": "200"}
@@ -43,7 +43,8 @@ if early:
         n = r.get("n", "").strip()
         if n and n != "İsimsiz": names_by_day.setdefault(r.get("d"), set()).add(n.lower())
     today_names = names_by_day.get(day, set())
-    roster = set().union(*[v for d, v in names_by_day.items() if d != day] or [set()]) | today_names
+    since = (day_start - datetime.timedelta(days=ROSTER_DAYS)).date().isoformat()
+    roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
     missing = roster - today_names
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
     if len(roster) < 2 or missing:
@@ -73,7 +74,43 @@ text = head + f"*Günün sonuçları* · Cevap: {s['answer']} · {s['count']} oy
 body = {"text": text.replace("*", ""), "blocks": [
     {"type": "section", "text": {"type": "mrkdwn", "text": text}},
     {"type": "image", "image_url": img, "alt_text": "Günün Wordle tahtaları"}]}
-req = urllib.request.Request(os.environ["WEBHOOK_URL"], data=json.dumps(body, ensure_ascii=False).encode(), headers={"Content-Type": "application/json"})
-resp = urllib.request.urlopen(req, timeout=30).read().decode()
-if resp != "ok": raise SystemExit("Webhook hatası: " + resp)
+def post_webhook(payload):
+    req = urllib.request.Request(os.environ["WEBHOOK_URL"], data=json.dumps(payload, ensure_ascii=False).encode(), headers={"Content-Type": "application/json"})
+    resp = urllib.request.urlopen(req, timeout=30).read().decode()
+    if resp != "ok": raise SystemExit("Webhook hatası: " + resp)
+
+def post_bot(payload):
+    req = urllib.request.Request("https://slack.com/api/chat.postMessage", data=json.dumps(payload, ensure_ascii=False).encode(),
+        headers={"Content-Type": "application/json; charset=utf-8", "Authorization": "Bearer " + os.environ["SLACK_BOT_TOKEN"]})
+    d = json.load(urllib.request.urlopen(req, timeout=30))
+    if not d.get("ok"): raise RuntimeError(d.get("error"))
+    return d["ts"]
+
+ts = None
+chan = os.environ.get("RESULT_CHANNEL")
+if chan:
+    try: ts = post_bot({"channel": chan, **body})
+    except Exception as e: print("Bot ile gönderilemedi, webhook'a düşülüyor:", e)
+if not ts: post_webhook(body)
 print("Paylaşıldı.")
+
+# Genel durum (leaderboard) thread'e
+if ts:
+    try:
+        allraw = os.path.join(root, "all.tmp"); open(allraw, "w", encoding="utf-8").write("\n".join(texts))
+        lb = os.path.join(root, "leaderboards", "daily", f"{day}.png"); os.makedirs(os.path.dirname(lb), exist_ok=True)
+        o = subprocess.run([sys.executable, os.path.join(root, "scripts", "leaderboard.py"), allraw, day, lb], capture_output=True, text=True, check=True)
+        os.remove(allraw); ls = json.loads(o.stdout)
+        if ls["players"]:
+            git("add", lb); git("commit", "-m", f"{day} genel durum"); git("push")
+            lbimg = f"https://raw.githubusercontent.com/{os.environ['GITHUB_REPOSITORY']}/main/leaderboards/daily/{day}.png?v={int(time.time())}"
+            for _ in range(12):
+                try:
+                    if urllib.request.urlopen(lbimg, timeout=15).status == 200: break
+                except Exception: pass
+                time.sleep(5)
+            post_bot({"channel": chan, "thread_ts": ts, "text": "🏆 Genel durum",
+                      "blocks": [{"type": "image", "image_url": lbimg, "alt_text": "Genel durum", "title": {"type": "plain_text", "text": "🏆 Genel durum"}}]})
+            print("Genel durum thread'e atıldı.")
+    except Exception as e:
+        print("Genel durum atılamadı:", e)

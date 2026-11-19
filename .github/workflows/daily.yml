@@ -23,6 +23,7 @@ jobs:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
           RAW_CHANNEL: C0CJJHLE3PW
+          RESULT_CHANNEL: C09NZGLG6AD
           DAY: ${{ inputs.day }}
           FORCE: ${{ inputs.force }}
           EARLY: ${{ github.event.schedule == '*/10 6-12 * * 1-5' && '1' || '' }}
