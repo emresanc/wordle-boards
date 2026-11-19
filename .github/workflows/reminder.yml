@@ -1,0 +1,21 @@
+name: Kelime Masters sabah hatırlatması
+on:
+  schedule:
+    - cron: "17 5 * * 1-5"   # ~08:17 İstanbul; GitHub gecikmesiyle 08:30 civarı düşer
+  workflow_dispatch:
+    inputs:
+      dry: { description: "Sadece yazdır, gönderme (1)", required: false }
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install pillow==11.*
+      - run: python scripts/reminder.py
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          RAW_CHANNEL: C0CJJHLE3PW
+          DRY: ${{ inputs.dry }}
