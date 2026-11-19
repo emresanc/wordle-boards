@@ -7,6 +7,7 @@ on:
     inputs:
       day: { description: "Gün (YYYY-MM-DD, boş = bugün)", required: false }
       force: { description: "Aynı gün tekrar paylaş (1)", required: false }
+      early: { description: "Sadece herkes bitirdiyse paylaş (1) — dış zamanlayıcı için", required: false }
 permissions:
   contents: write
 concurrency: { group: daily, cancel-in-progress: false }
@@ -26,4 +27,4 @@ jobs:
           RESULT_CHANNEL: C09NZGLG6AD
           DAY: ${{ inputs.day }}
           FORCE: ${{ inputs.force }}
-          EARLY: ${{ github.event.schedule == '*/10 6-12 * * 1-5' && '1' || '' }}
+          EARLY: ${{ (github.event.schedule == '*/10 6-12 * * 1-5' || inputs.early == '1') && '1' || '' }}
