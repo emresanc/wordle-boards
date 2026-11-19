@@ -44,6 +44,7 @@ if early:
         if n and n != "İsimsiz": names_by_day.setdefault(r.get("d"), set()).add(n.lower())
     today_names = names_by_day.get(day, set())
     since = (day_start - datetime.timedelta(days=ROSTER_DAYS)).date().isoformat()
+    since = max(since, "2026-11-18")   # öncesi test günleri
     roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
     missing = roster - today_names
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
