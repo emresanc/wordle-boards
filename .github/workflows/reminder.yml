@@ -1,7 +1,6 @@
 name: Kelime Masters sabah hatırlatması
 on:
-  schedule:
-    - cron: "17 5 * * 1-5"   # ~08:17 İstanbul; GitHub gecikmesiyle 08:30 civarı düşer
+  # Zamanlama: cron-job.org (GitHub zamanlayıcısı güvenilmez çıktı)
   workflow_dispatch:
     inputs:
       dry: { description: "Sadece yazdır, gönderme (1)", required: false }

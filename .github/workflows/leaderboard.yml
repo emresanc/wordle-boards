@@ -1,7 +1,6 @@
 name: Kelime Masters leaderboard
 on:
-  schedule:
-    - cron: "31 13 * * 5"   # Cuma 16:31 İstanbul
+  # Zamanlama: cron-job.org (GitHub zamanlayıcısı güvenilmez çıktı)
   workflow_dispatch:
     inputs:
       day: { description: "Gün (YYYY-MM-DD, boş = bugün)", required: false }

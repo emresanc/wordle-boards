@@ -1,8 +1,6 @@
 name: Kelime Masters 16:00
 on:
-  schedule:
-    - cron: "1 13 * * 1-5"        # 16:01 İstanbul, hafta içi: kesin paylaşım
-    - cron: "*/10 6-12 * * 1-5"   # 09:00-15:50: herkes bitirdiyse erken paylaşım
+  # Zamanlama: cron-job.org (GitHub zamanlayıcısı güvenilmez çıktı)
   workflow_dispatch:
     inputs:
       day: { description: "Gün (YYYY-MM-DD, boş = bugün)", required: false }
@@ -27,4 +25,4 @@ jobs:
           RESULT_CHANNEL: C09NZGLG6AD
           DAY: ${{ inputs.day }}
           FORCE: ${{ inputs.force }}
-          EARLY: ${{ (github.event.schedule == '*/10 6-12 * * 1-5' || inputs.early == '1') && '1' || '' }}
+          EARLY: ${{ inputs.early }}
