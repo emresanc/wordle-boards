@@ -10,18 +10,8 @@ today = datetime.datetime.now(TZ).date()
 if os.environ.get("DAY"): today = datetime.date.fromisoformat(os.environ["DAY"])
 if today.weekday() > 4: sys.exit(0)
 
-MONDAY = [
-    "Günaydın Wordle ustaları ☀️ Yeni hafta, temiz sayfa: bugün pazartesi, ilk kelime serbest! İstediğin kelimeyle aç 🍀",
-    "Günaydın! ☕ Pazartesi = serbest başlangıç. Favori açılış kelimeni çıkar, haftaya güzel başla 💪",
-    "Haftanın ilk günaydını 🌤️ Bugün kural yok, ilk kelime senin seçimin. Kolay gelsin! 🟩",
-]
-OTHER = [
-    "Günaydın ☀️ Bugünün ilk kelimesi dünün cevabı: *{w}* 🟩 Kolay gelsin, 16:00'da görüşürüz!",
-    "Günaydın Wordle ustaları ☕ Hatırlatma: ilk kelime *{w}* olacak. Gerisi senin dehana kalmış 🧠✨",
-    "Güne güzel başla 🌼 Bugün açılış kelimesi: *{w}*. Bol yeşil kareler dileriz 🟩🟩🟩🟩🟩",
-    "Günaydın! 🐣 Kahveni al, ilk kelimeye *{w}* yaz, gerisini kafana bırak 😌",
-    "Herkese günaydın 🌞 Dünkü cevap *{w}* bugün ilk tahmin olarak giriliyor. Hadi bakalım 🚀",
-]
+MONDAY = ["Günaydın ☀️ Bugün pazartesi, ilk kelime serbest."]
+OTHER = ["Günaydın ☀️ Bugünün ilk kelimesi: *{w}*"]
 
 if today.weekday() == 0:
     text = MONDAY[today.toordinal() % len(MONDAY)]
