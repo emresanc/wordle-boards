@@ -33,6 +33,32 @@ while True:
     texts += [m.get("text", "") for m in d.get("messages", [])]
     cursor = (d.get("response_metadata") or {}).get("next_cursor")
     if not cursor: break
+def nudge(who, names_by_day):
+    """Tek kişi kaldıysa kanalda bir kez etiketle."""
+    marker = os.path.join(root, "nudges", f"{day}.txt")
+    if os.path.exists(marker): return
+    ids = json.load(open(os.path.join(root, "players.json"), encoding="utf-8"))
+    uid = ids.get(who)
+    mention = f"<@{uid}>" if uid else who.title()
+    text = f"{mention} tek sen kaldın! ⏳"
+    payload = {"text": text}
+    chan = os.environ.get("RESULT_CHANNEL"); sent = False
+    if chan:
+        try:
+            req = urllib.request.Request("https://slack.com/api/chat.postMessage",
+                data=json.dumps({"channel": chan, **payload}, ensure_ascii=False).encode(),
+                headers={"Content-Type": "application/json; charset=utf-8", "Authorization": "Bearer " + os.environ["SLACK_BOT_TOKEN"]})
+            sent = json.load(urllib.request.urlopen(req, timeout=30)).get("ok", False)
+        except Exception as e: print("Bot ile dürtülemedi:", e)
+    if not sent:
+        req = urllib.request.Request(os.environ["WEBHOOK_URL"], data=json.dumps(payload, ensure_ascii=False).encode(), headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=30).read()
+    os.makedirs(os.path.dirname(marker), exist_ok=True); open(marker, "w").write(who + "\n")
+    for a in (["config", "user.name", "Kelime Masters Bot"], ["config", "user.email", "actions@users.noreply.github.com"], ["add", marker], ["commit", "-m", f"{day} dürtme"], ["push"]):
+        subprocess.run(["git", "-C", root, *a], check=True)
+    print("Dürtüldü:", who)
+
+
 if early:
     sys.path.insert(0, os.path.join(root, "scripts"))
     import re, wm16
@@ -48,6 +74,8 @@ if early:
     roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
     missing = roster - today_names
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
+    if len(roster) >= 2 and len(missing) == 1:
+        nudge(next(iter(missing)), names_by_day)
     if len(roster) < 2 or missing:
         print("Herkes bitirmedi, 16:00 bekleniyor."); sys.exit(0)
     print("Herkes bitirdi, erken paylaşılıyor.")
