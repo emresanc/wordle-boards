@@ -33,14 +33,15 @@ while True:
     texts += [m.get("text", "") for m in d.get("messages", [])]
     cursor = (d.get("response_metadata") or {}).get("next_cursor")
     if not cursor: break
-def nudge(who, names_by_day):
-    """Tek kişi kaldıysa kanalda bir kez etiketle."""
-    marker = os.path.join(root, "nudges", f"{day}.txt")
+def nudge(whos, names_by_day):
+    """1 ya da 2 kişi kaldıysa kanalda (her durum için günde bir kez) etiketle."""
+    whos = sorted(whos)
+    marker = os.path.join(root, "nudges", f"{day}.txt" if len(whos) == 1 else f"{day}-{len(whos)}.txt")
     if os.path.exists(marker): return
     ids = json.load(open(os.path.join(root, "players.json"), encoding="utf-8"))
-    uid = ids.get(who)
-    mention = f"<@{uid}>" if uid else who.title()
-    text = f"{mention} tek sen kaldın! ⏳"
+    mentions = [f"<@{ids[w]}>" if ids.get(w) else w.title() for w in whos]
+    text = f"{mentions[0]} tek sen kaldın! ⏳" if len(whos) == 1 else f"{mentions[0]} ve {mentions[1]}, son ikisi sizsiniz! ⏳"
+    who = ", ".join(whos)
     payload = {"text": text}
     chan = os.environ.get("RESULT_CHANNEL"); sent = False
     if chan:
@@ -74,8 +75,8 @@ if early:
     roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
     missing = roster - today_names
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
-    if len(roster) >= 2 and len(missing) == 1:
-        nudge(next(iter(missing)), names_by_day)
+    if len(missing) in (1, 2) and len(roster) > len(missing):
+        nudge(missing, names_by_day)
     if len(roster) < 2 or missing:
         print("Herkes bitirmedi, 16:00 bekleniyor."); sys.exit(0)
     print("Herkes bitirdi, erken paylaşılıyor.")
