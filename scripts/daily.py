@@ -25,11 +25,12 @@ def slack(method, **params):
 
 day_start = datetime.datetime.fromisoformat(day).replace(tzinfo=TZ)
 oldest = min(day_start - datetime.timedelta(days=ROSTER_DAYS), datetime.datetime(2026, 11, 18, tzinfo=TZ)).timestamp()
-texts, cursor = [], None
+texts, cursor, msgs = [], None, []
 while True:
     p = {"channel": os.environ["RAW_CHANNEL"], "oldest": str(oldest), "limit": "200"}
     if cursor: p["cursor"] = cursor
     d = slack("conversations.history", **p)
+    msgs += d.get("messages", [])
     texts += [m.get("text", "") for m in d.get("messages", [])]
     cursor = (d.get("response_metadata") or {}).get("next_cursor")
     if not cursor: break
@@ -73,7 +74,15 @@ if early:
     since = (day_start - datetime.timedelta(days=ROSTER_DAYS)).date().isoformat()
     since = max(since, "2026-11-18")   # öncesi test günleri
     roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
-    missing = roster - today_names
+    # İzinliler: o gün #wordle-raw'a "izinli: İsim" yazılırsa beklenmez
+    oldest_today = day_start.timestamp()
+    absent = set()
+    for m in msgs:
+        if float(m.get("ts", 0)) < oldest_today: continue
+        mm = re.match(r"\s*izinli\s*[:\-]?\s*(.+)", m.get("text", ""), re.I)
+        if mm: absent |= {x.strip().lower() for x in re.split(r"[,&]| ve ", mm.group(1)) if x.strip()}
+    if absent: print("İzinli:", sorted(absent))
+    missing = roster - today_names - absent
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
     if len(missing) in (1, 2) and len(roster) > len(missing):
         nudge(missing, names_by_day)
