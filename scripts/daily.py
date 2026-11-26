@@ -87,6 +87,18 @@ if early:
         body = re.sub(r"\d{4}-\d{2}-\d{2}.*", "", body)
         if sent <= day <= until:
             absent |= {x.strip().lower() for x in re.split(r"[,&]| ve ", body) if x.strip()}
+    # Slack durumu izin/tatil gösteren beklenen oyuncular da otomatik izinli sayılır
+    try:
+        ids = json.load(open(os.path.join(root, "players.json"), encoding="utf-8"))
+        for n in sorted(roster - today_names - absent):
+            uid = ids.get(n)
+            if not uid: continue
+            prof = slack("users.profile.get", user=uid).get("profile", {})
+            st = (prof.get("status_text", "") + " " + prof.get("status_emoji", "")).lower()
+            if re.search(r"izin|tatil|rapor|leave|vacation|holiday|ooo|out of office|palm_tree|airplane|desert_island|face_with_thermometer|sick", st):
+                absent.add(n); print(f"Slack durumundan izinli: {n} ({st.strip()})")
+    except SystemExit as e:
+        print("Slack durumu okunamadı:", e)
     if absent: print("İzinli:", sorted(absent))
     missing = roster - today_names - absent
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
