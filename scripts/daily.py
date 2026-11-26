@@ -74,13 +74,19 @@ if early:
     since = (day_start - datetime.timedelta(days=ROSTER_DAYS)).date().isoformat()
     since = max(since, "2026-11-18")   # öncesi test günleri
     roster = set().union(*[v for d, v in names_by_day.items() if d != day and d >= since] or [set()]) | today_names
-    # İzinliler: o gün #wordle-raw'a "izinli: İsim" yazılırsa beklenmez
-    oldest_today = day_start.timestamp()
+    # İzinliler: #wordle-raw'a "izinli: İsim" (sadece o gün) ya da
+    # "izinli: İsim 2026-11-27" (o tarih dahil o tarihe kadar) yazılırsa beklenmez
     absent = set()
     for m in msgs:
-        if float(m.get("ts", 0)) < oldest_today: continue
         mm = re.match(r"\s*izinli\s*[:\-]?\s*(.+)", m.get("text", ""), re.I)
-        if mm: absent |= {x.strip().lower() for x in re.split(r"[,&]| ve ", mm.group(1)) if x.strip()}
+        if not mm: continue
+        body = mm.group(1)
+        sent = datetime.datetime.fromtimestamp(float(m.get("ts", 0)), TZ).date().isoformat()
+        dm = re.search(r"(\d{4}-\d{2}-\d{2})", body)
+        until = dm.group(1) if dm else sent
+        body = re.sub(r"\d{4}-\d{2}-\d{2}.*", "", body)
+        if sent <= day <= until:
+            absent |= {x.strip().lower() for x in re.split(r"[,&]| ve ", body) if x.strip()}
     if absent: print("İzinli:", sorted(absent))
     missing = roster - today_names - absent
     print(f"Bugün oynayan {len(today_names)}/{len(roster)}; bekleniyor: {sorted(missing)}")
